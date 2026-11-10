@@ -1,0 +1,30 @@
+services:
+  git-sync:
+    image: registry.k8s.io/git-sync/git-sync:v4.5.0
+    environment:
+      GITSYNC_REPO: https://github.com/pierrelepottier-kraken/deployments
+      GITSYNC_REF: main
+      GITSYNC_PERIOD: 30s
+      GITSYNC_ROOT: /git
+      GITSYNC_LINK: current
+    volumes:
+      - dags:/git
+
+  airflow:
+    build: .
+    command: standalone
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: "true"
+      AIRFLOW__DAG_PROCESSOR__REFRESH_INTERVAL: "30"
+      AIRFLOW__CORE__DAGS_FOLDER: /git/current
+    volumes:
+      - dags:/git:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - git-sync
+
+volumes:
+  dags:
