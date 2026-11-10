@@ -9,9 +9,21 @@ permissions:
 jobs:
   lint-test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: job
     steps:
       - name: Check out the caller repository
         uses: actions/checkout@v7
+        with:
+          path: job
+
+      - name: Check out the shared Kraken tools
+        uses: actions/checkout@v7
+        with:
+          repository: pierrelepottier-kraken/kraken
+          ref: main
+          path: kraken
 
       - name: Print the commit SHA
         run: echo "$GITHUB_SHA"
@@ -22,8 +34,8 @@ jobs:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: |
-            requirements-dev.txt
-            requirements.txt
+            job/requirements-dev.txt
+            job/requirements.txt
 
       - name: Set up just
         uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 # v4
@@ -31,20 +43,20 @@ jobs:
           just-version: "1.59.0"
 
       - name: Install development dependencies
-        run: just install
+        run: just --justfile ../kraken/justfile --working-directory . install
 
       - name: Lint Python code
-        run: just lint
+        run: just --justfile ../kraken/justfile --working-directory . lint
 
       - name: Run tests and generate the JUnit report
-        run: just test
+        run: just --justfile ../kraken/justfile --working-directory . test
 
       - name: Upload the test report even on failure
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: junit
-          path: reports/junit.xml
+          path: job/reports/junit.xml
 
   build-push:
     needs: lint-test
